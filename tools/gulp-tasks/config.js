@@ -1,4 +1,7 @@
+const ts = require('gulp-typescript');
 const utils = require('./utils');
+
+const tsProject = ts.createProject('tsconfig.json');
 
 function exportConfig(gulp, $) {
   return {
@@ -38,6 +41,7 @@ function exportConfig(gulp, $) {
       pipelines: [
         {
           do: [
+            tsProject(ts.reporter.longReporter()),
             $.eslint(),
             $.eslint.result((result) => {
               utils.eslintReporter(result);

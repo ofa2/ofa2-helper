@@ -3,11 +3,23 @@ import { stat } from 'fs-extra';
 import chalk from 'chalk';
 import bb from 'bluebird';
 
+import {
+  IBaseProjectInfo,
+  IProjectInfo,
+  IProjectCheckResult,
+  LintResult,
+  INodeVersionMapping,
+} from './interface';
 import { execAsync } from './utils';
+
+const nodeVersionMapping: INodeVersionMapping = {
+  8: '8.11.1',
+  4: '4.3.1',
+};
 
 const PROJECT_PATH = process.cwd();
 
-async function isFile(filePath) {
+async function isFile(filePath: string) {
   try {
     let stats = await stat(filePath);
     return stats.isFile();
@@ -21,13 +33,13 @@ async function getRootPath() {
   return str.replace(/[\r\n]/, '');
 }
 
-async function getHeadFiles(rootPath, headLength) {
+async function getHeadFiles(rootPath: string, headLength: string) {
   return execAsync(`cd ${rootPath} && git diff --name-only HEAD~${headLength}`);
 }
 
-function getModifiedProjects(str) {
+function getModifiedProjects(str: string) {
   let arr = str.split('\n');
-  let result = {};
+  let result: { [key: string]: any } = {};
 
   arr.forEach((item) => {
     if (!item) {
@@ -45,131 +57,83 @@ function getModifiedProjects(str) {
   return result;
 }
 
-async function getModifiedInfo(rootPath, headFilesStr) {
-  let arr = getModifiedProjects(headFilesStr);
-
-  let modifiedProjects = await bb
-    .map(Object.keys(arr), (project) => {
-      let p = pathResolve(rootPath, project);
-      return {
-        projectName: basename(p),
-        projectPath: p,
-      };
-    })
-    .filter(async ({ projectPath }) => {
-      try {
-        let stats = await stat(projectPath);
-        if (stats.isDirectory()) {
-          return true;
-        }
-
-        return false;
-      } catch (e) {
-        console.warn(e);
-        return false;
-      }
-    });
-
-  return modifiedProjects;
-}
-
-async function getLintType(projects) {
-  return bb.map(projects, async ({ projectPath, projectName }) => {
-    let jshintClientFile = await isFile(`${projectPath}/.jshintrc_client`);
-    let jshintServerFile = await isFile(`${projectPath}/.jshintrc_server`);
-    let eslintFile = await isFile(`${projectPath}/server/.eslintrc.js`);
-
-    let isJshint = jshintClientFile || jshintServerFile;
-    let isEslint = eslintFile;
-    return {
-      projectPath,
-      projectName,
-      jshint: isJshint,
-      eslint: isEslint,
-      nodeVersion: isEslint ? '8.11.1' : '4.3.1',
-    };
-  });
-}
-
-interface LintResult {
-  projectPath: string;
-  str?: string;
-  isWarning?: boolean;
-  isError?: boolean;
-}
-
-async function runJshint({ projectPath, projectName, nodeVersion }) {
-  let data = await execAsync(`cd ${projectPath} && gulp jshint`, {
+async function runJshint({ alias, path, nodeVersion }: IProjectInfo) {
+  let data = await execAsync(`cd ${alias} && gulp jshint`, {
     env: JSON.parse(
-      JSON.stringify(process.env).replace(/node\/v\d+\.\d+\.\d+/g, `node/v${nodeVersion}`)
+      JSON.stringify(process.env).replace(
+        /node\/v\d+\.\d+\.\d+/g,
+        `node/v${nodeVersionMapping[nodeVersion]}`
+      )
     ),
   });
 
-  let result: LintResult = {
-    projectPath,
-  };
+  let result: LintResult = {};
 
   if (/line.*/gi.test(data)) {
     data = data.replace(/line.*/gi, (str) => {
-      return `${chalk.red(projectName)}\n${chalk.red(str)}`;
+      return `${chalk.red(path)}\n${chalk.red(str)}`;
     });
 
     result.isError = true;
   }
 
-  result.str = `${projectPath} \n ${data}`;
+  result.str = `${alias} \n ${data}`;
   return result;
 }
 
-async function runEslint({ projectPath, projectName, nodeVersion }) {
-  let data = await execAsync(`cd ${projectPath}/server && gulp lint`, {
+async function runEslint({ path, alias, nodeVersion }: IProjectInfo) {
+  let data = await execAsync(`cd ${path}/server && gulp lint`, {
     env: JSON.parse(
-      JSON.stringify(process.env).replace(/node\/v\d+\.\d+\.\d+/g, `node/v${nodeVersion}`)
+      JSON.stringify(process.env).replace(
+        /node\/v\d+\.\d+\.\d+/g,
+        `node/v${nodeVersionMapping[nodeVersion]}`
+      )
     ),
   });
 
-  let result: LintResult = {
-    projectPath,
-  };
+  let result: LintResult = {};
 
   if (/src\/.*\d+:\d+/gi.test(data)) {
     data = data.replace(/src\/.*\d+:\d+/gi, (str) => {
-      return `${chalk.blueBright(projectName)}\n${chalk.red(str)}`;
+      return `${chalk.blueBright(alias)}\n${chalk.red(str)}`;
     });
 
     result.isError = true;
   }
 
-  result.str = `${projectPath} \n ${data}`;
+  result.str = `${path} \n ${data}`;
   return result;
 }
 
-async function runLint(project) {
-  let data;
+async function runLint(project: IProjectInfo): Promise<IProjectCheckResult> {
+  let lintResult: LintResult;
+
   if (project.jshint) {
-    data = await runJshint(project);
+    lintResult = await runJshint(project);
   } else if (project.eslint) {
-    data = await runEslint(project);
+    lintResult = await runEslint(project);
   } else {
-    project.isWarning = true;
+    lintResult = {
+      isWarning: true,
+    };
   }
 
-  return { ...project, ...data };
+  return { ...project, ...lintResult };
 }
 
-async function projectsLint(projects) {
+async function projectsLint(projects: IProjectInfo[]) {
   return bb.map(projects, (project) => {
     return runLint(project);
   });
 }
 
-function splitProjects(projects) {
+function splitProjects(projects: IProjectInfo[]) {
   let v4Project = projects.filter((project) => {
-    return project.nodeVersion === '4.3.1';
+    return project.nodeVersion === '8';
   });
 
   let v8Project = projects.filter((project) => {
-    return project.nodeVersion === '8.11.1';
+    return project.nodeVersion === '4';
   });
 
   return {
@@ -178,7 +142,7 @@ function splitProjects(projects) {
   };
 }
 
-function lintLog(projects) {
+function lintLog(projects: IProjectCheckResult[]) {
   projects.forEach((item) => {
     if (item && item.str) {
       console.info(item.str);
@@ -209,18 +173,18 @@ function lintLog(projects) {
   console.info('\n');
 }
 
-function showDeployProject(projects) {
+function showDeployProject(projects: IProjectInfo[]) {
   let { v4Project, v8Project } = splitProjects(projects);
 
   let v4Str = v4Project
     .map((item) => {
-      return item.projectName;
+      return item.alias;
     })
     .join(',');
 
   let v8Str = v8Project
     .map((item) => {
-      return item.projectName;
+      return item.alias;
     })
     .join(',');
 
@@ -233,20 +197,79 @@ function showDeployProject(projects) {
   }
 }
 
+async function getProjectLintInfo(projectPath: string) {
+  let jshintClientFile = await isFile(`${projectPath}/.jshintrc_client`);
+  let jshintServerFile = await isFile(`${projectPath}/.jshintrc_server`);
+  let eslintFile = await isFile(`${projectPath}/server/.eslintrc.js`);
+
+  let isJshint = jshintClientFile || jshintServerFile;
+  let isEslint = eslintFile;
+  let nodeVersion: keyof INodeVersionMapping = isEslint ? '8' : '4';
+  return {
+    jshint: isJshint,
+    eslint: isEslint,
+    lintPath: isEslint ? `${projectPath}/server/` : projectPath,
+    nodeVersion,
+  };
+}
+
+async function getProjectsBaseInfo(
+  rootPath: string,
+  headFilesStr: string
+): Promise<IBaseProjectInfo[]> {
+  let arr = getModifiedProjects(headFilesStr);
+
+  let baseProjectInfo = await bb
+    .map(Object.keys(arr), (project) => {
+      let p = pathResolve(rootPath, project);
+      return {
+        alias: basename(p),
+        path: p,
+      };
+    })
+    .filter(async ({ path }) => {
+      try {
+        let stats = await stat(path);
+        if (stats.isDirectory()) {
+          return true;
+        }
+
+        return false;
+      } catch (e) {
+        console.warn(e);
+        return false;
+      }
+    });
+
+  return baseProjectInfo;
+}
+
+async function getProjectInfo(baseProjectInfo: IBaseProjectInfo): Promise<IProjectInfo> {
+  let lintInfo = await getProjectLintInfo(baseProjectInfo.path);
+
+  return { ...lintInfo, ...baseProjectInfo };
+}
+
+async function getProjects(projectsBaseInfo: IBaseProjectInfo[]) {
+  return bb.map(projectsBaseInfo, (baseProjectInfo) => {
+    return getProjectInfo(baseProjectInfo);
+  });
+}
+
 async function init() {
   let headLength = process.argv[2] || '1';
   let isDeploy = !!process.argv[3];
 
   let rootPath = await getRootPath();
   let headFilesStr = await getHeadFiles(rootPath, headLength);
-  // eslint-disable-next-line no-unused-vars
-  let projects = await getModifiedInfo(rootPath, headFilesStr);
-  projects = await getLintType(projects);
+
+  let projectsBaseInfo = await getProjectsBaseInfo(rootPath, headFilesStr);
+  let projects = await getProjects(projectsBaseInfo);
 
   console.info(JSON.stringify(projects));
 
+  showDeployProject(projects);
   if (isDeploy) {
-    showDeployProject(projects);
     return;
   }
 

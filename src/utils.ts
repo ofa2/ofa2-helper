@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 
-async function execAsync(cmd, options?): Promise<string> {
+async function execAsync(cmd: string, options?: any): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     exec(cmd, options, (error, stdout, stderr) => {
       if (error) {
