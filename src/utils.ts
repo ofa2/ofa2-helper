@@ -7,7 +7,7 @@ async function execAsync(cmd, options?): Promise<string> {
         return reject(error);
       }
 
-      return resolve(stdout || stderr);
+      return resolve(`${stdout || stderr}`);
     });
   });
 }

@@ -1,13 +1,11 @@
 import { resolve as pathResolve, basename } from 'path';
-import { execAsync } from './utils';
 import { stat } from 'fs-extra';
 import chalk from 'chalk';
 import bb from 'bluebird';
 
+import { execAsync } from './utils';
+
 const PROJECT_PATH = process.cwd();
-// let ROOT_PATH;
-// let headLength = process.argv[2] || '0';
-// let showDeployProject = !!process.argv[3];
 
 async function isFile(filePath) {
   try {
@@ -112,8 +110,8 @@ async function runJshint({ projectPath, projectName, nodeVersion }) {
   };
 
   if (/line.*/gi.test(data)) {
-    data = data.replace(/line.*/gi, function(str) {
-      return chalk.red(projectName) + '\n' + chalk.red(str);
+    data = data.replace(/line.*/gi, (str) => {
+      return `${chalk.red(projectName)}\n${chalk.red(str)}`;
     });
 
     result.isError = true;
@@ -135,8 +133,8 @@ async function runEslint({ projectPath, projectName, nodeVersion }) {
   };
 
   if (/src\/.*\d+:\d+/gi.test(data)) {
-    data = data.replace(/src\/.*\d+:\d+/gi, function(str) {
-      return chalk.blueBright(projectName) + '\n' + chalk.red(str);
+    data = data.replace(/src\/.*\d+:\d+/gi, (str) => {
+      return `${chalk.blueBright(projectName)}\n${chalk.red(str)}`;
     });
 
     result.isError = true;
@@ -192,7 +190,7 @@ function lintLog(projects) {
   let failedArr: any[] = [];
   let warningArr: any[] = [];
 
-  projects.forEach(function(item) {
+  projects.forEach((item) => {
     if (item.isError) {
       failedArr.push(item);
     } else if (item.isWarning) {
@@ -204,9 +202,9 @@ function lintLog(projects) {
 
   console.info('\n');
   console.info(
-    chalk.green('success: ' + successArr.length),
-    chalk.red('failed: ' + failedArr.length),
-    chalk.yellow('warning: ' + warningArr.length)
+    chalk.green(`success: ${successArr.length}`),
+    chalk.red(`failed: ${failedArr.length}`),
+    chalk.yellow(`warning: ${warningArr.length}`)
   );
   console.info('\n');
 }
@@ -249,7 +247,7 @@ async function init() {
 
   if (isDeploy) {
     showDeployProject(projects);
-    return null;
+    return;
   }
 
   projects = await projectsLint(projects);
