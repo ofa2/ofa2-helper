@@ -2,6 +2,9 @@
   "name": "@ofa2/ofa2-helper",
   "version": "0.0.0",
   "main": "index.js",
+  "bin": {
+    "diffl": "./bin/diffl"
+  },
   "license": "MIT",
   "publishConfig": {
     "access": "public"
