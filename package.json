@@ -1,5 +1,5 @@
 {
-  "name": "commit-lint",
+  "name": "@ofa2/ofa2-helper",
   "version": "0.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -9,11 +9,12 @@
   "scripts": {
     "start": "./node_modules/.bin/babel-node --extensions '.ts' src",
     "lint": "./node_modules/.bin/eslint src/**/*.ts",
-    "lint-fix": "./node_modules/.bin/eslint src/**/*.ts --fix",
+    "lint-fix": "npm run lint -- --fix",
     "build": "gulp build"
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0",
+    "ascii-progress": "^1.0.5",
     "bluebird": "^3.5.2",
     "chalk": "^2.4.1",
     "fs-extra": "4.0.3"

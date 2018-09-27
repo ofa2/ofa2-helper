@@ -2,6 +2,7 @@ import { resolve as pathResolve, basename } from 'path';
 import { stat } from 'fs-extra';
 import chalk from 'chalk';
 import bb from 'bluebird';
+import ProgressBar from 'ascii-progress';
 
 import {
   IBaseProjectInfo,
@@ -16,6 +17,8 @@ const nodeVersionMapping: INodeVersionMapping = {
   8: '8.11.1',
   4: '4.3.1',
 };
+
+const deployIgnoreProjects = ['HDCubeWorker', 'CubeWorker', '__test__'];
 
 const PROJECT_PATH = process.cwd();
 
@@ -122,8 +125,18 @@ async function runLint(project: IProjectInfo): Promise<IProjectCheckResult> {
 }
 
 async function projectsLint(projects: IProjectInfo[]) {
-  return bb.map(projects, (project) => {
-    return runLint(project);
+  console.info('\n');
+  let bar = new ProgressBar({
+    schema: 'run lint.... :bar :percent',
+    total: projects.length + 1,
+  });
+
+  bar.tick();
+
+  return bb.map(projects, async (project) => {
+    let result = await runLint(project);
+    bar.tick();
+    return result;
   });
 }
 
@@ -180,11 +193,17 @@ function showDeployProject(projects: IProjectInfo[]) {
     .map((item) => {
       return item.alias;
     })
+    .filter((alias) => {
+      return deployIgnoreProjects.indexOf(alias) === -1;
+    })
     .join(',');
 
   let v8Str = v8Project
     .map((item) => {
       return item.alias;
+    })
+    .filter((alias) => {
+      return deployIgnoreProjects.indexOf(alias) === -1;
     })
     .join(',');
 
