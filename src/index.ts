@@ -142,11 +142,11 @@ async function projectsLint(projects: IProjectInfo[]) {
 
 function splitProjects(projects: IProjectInfo[]) {
   let v4Project = projects.filter((project) => {
-    return project.nodeVersion === '8';
+    return project.nodeVersion === '4';
   });
 
   let v8Project = projects.filter((project) => {
-    return project.nodeVersion === '4';
+    return project.nodeVersion === '8';
   });
 
   return {
