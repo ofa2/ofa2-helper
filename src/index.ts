@@ -189,7 +189,7 @@ function lintLog(projects: IProjectCheckResult[]) {
 function showDeployProject(projects: IProjectInfo[]) {
   let { v4Project, v8Project } = splitProjects(projects);
 
-  let v4Str = v4Project
+  let str = [...v4Project, ...v8Project]
     .map((item) => {
       return item.alias;
     })
@@ -198,22 +198,7 @@ function showDeployProject(projects: IProjectInfo[]) {
     })
     .join(',');
 
-  let v8Str = v8Project
-    .map((item) => {
-      return item.alias;
-    })
-    .filter((alias) => {
-      return deployIgnoreProjects.indexOf(alias) === -1;
-    })
-    .join(',');
-
-  if (v8Str) {
-    console.info(chalk.blue('make deploy-esnext-stage\n') + chalk.green(`${v8Str}`));
-    console.info('\n');
-  }
-  if (v4Str) {
-    console.info(chalk.blue('make deploy-stage\n') + chalk.green(`${v4Str}`));
-  }
+  console.info(chalk.blue('make deploy-stage\nmake deploy-prod\n') + chalk.green(`${str}`));
 }
 
 async function getProjectLintInfo(projectPath: string) {
