@@ -11,7 +11,7 @@ async function getDeepFiles(
   dirPath: string,
   {
     extname,
-    deep = 1,
+    deep,
     exclude = ['.git', '.idea', 'node_modules'],
   }: {
   extname?: string | RegExp;
