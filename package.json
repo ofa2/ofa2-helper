@@ -23,7 +23,7 @@
     "chalk": "^2.4.1",
     "fs-extra": "4.0.3",
     "humps": "^2.0.1",
-    "lodash": "^4.17.11"
+    "lodash": "^4.17.19"
   },
   "devDependencies": {
     "@babel/cli": "^7.0.0",
